@@ -135,7 +135,7 @@ void render_identicon(CGContextRef ctx, int32_t code, unsigned int size, CGColor
     
 }
 #define IDENTICON_SIZE (96)
-#if TARGET_OS_MAC
+#if !(TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
 @implementation TUIImage (CGIdenticon)
 + (TUIImage *)identiconImageWithUserName:(NSString *)userName {
     const char *cStr = [userName UTF8String];
@@ -156,7 +156,7 @@ void render_identicon(CGContextRef ctx, int32_t code, unsigned int size, CGColor
     return ret;
 }
 @end
-#elif (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#else
 void CGContextAddRoundRect(CGContextRef context, CGRect rect, CGFloat radius)
 {
 	radius = MIN(radius, rect.size.width / 2);

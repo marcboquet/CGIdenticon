@@ -1,6 +1,6 @@
-#if TARGET_OS_MAC
+#if !(TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
 #import "TUIKit.h"
-#elif (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#else
 #import <UIKit/UIKit.h>
 #endif
 
@@ -16,11 +16,11 @@ void gloss_effect(CGContextRef ctx, unsigned int size, CGColorSpaceRef colorSpac
 void CGContextAddRoundRect(CGContextRef context, CGRect rect, CGFloat radius);
 void CGContextClipToRoundCornerRect(CGContextRef context, CGRect rect, CGFloat radius);
 
-#if TARGET_OS_MAC
+#if !(TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
 @interface TUIImage (CGIdenticon)
 + (TUIImage *)identiconImageWithUserName:(NSString *)userName;
 @end
-#elif (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
+#else
 @interface UIImage (CGIdenticon)
 + (UIImage *)identiconImageWithUserName:(NSString *)userName;
 @end
