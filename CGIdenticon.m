@@ -1,7 +1,5 @@
 #import "CGIdenticon.h"
-#if (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE || TARGET_OS_EMBEDDED)
 #import <CoreGraphics/CoreGraphics.h>
-#endif
 #import <CommonCrypto/CommonDigest.h>
 
 int patch0[]={ 0, 4, 24, 20 };
@@ -67,35 +65,6 @@ void render_identicon_patch(CGContextRef ctx, CGFloat x, CGFloat y, CGFloat size
 	// restore rotation
 	CGContextRestoreGState(ctx);
 }
-void gloss_effect(CGContextRef ctx, unsigned int size, CGColorSpaceRef colorSpace){
-    
-    //CGContextSaveGState(ctx);
-    CGContextSaveGState(ctx);
-    CGContextSetStrokeColorSpace(ctx, colorSpace);
-    CGContextSetLineWidth(ctx, 12.);
-    const CGFloat strokeComponents0[] = {1,1,1,1};
-    const CGFloat strokeComponents1[] = {.4,.5,.4,1};
-    CGContextSetStrokeColor(ctx, strokeComponents0);
-    CGContextBeginPath(ctx);
-    CGContextAddRoundRect(ctx, CGRectMake(2, 2, size-4, size-4), 12);
-    CGContextStrokePath(ctx);
-    CGContextSetStrokeColor(ctx, strokeComponents1);
-    CGContextSetLineWidth(ctx, 3);
-    CGContextBeginPath(ctx);
-    CGContextAddRoundRect(ctx, CGRectMake(4, 4, size-8, size-8), 6);
-    CGContextStrokePath(ctx);
-    CGContextRestoreGState(ctx);
-    const CGFloat components1[]={1,1,1,0.3,1,1,1,0.6};
-    const CGFloat locations[]={0,1};
-    CGGradientRef gradient = CGGradientCreateWithColorComponents(colorSpace, components1, locations, 2);
-    CGContextBeginPath(ctx);
-    CGContextAddRoundRect(ctx, CGRectMake(0, 0, size, size), 6);
-    CGContextClosePath(ctx);
-    CGContextClip(ctx);
-    CGContextDrawRadialGradient(ctx, gradient, CGPointMake(size/2, size*2), size/2, CGPointMake(size/2, size*1.7), size*1.3, 0);
-    CGColorSpaceRelease(colorSpace);
-    CGGradientRelease(gradient);
-}
 
 void render_identicon(CGContextRef ctx, int32_t code, unsigned int size, CGColorSpaceRef colorSpace) {
 	if (!ctx || !code || !size) return;
@@ -135,57 +104,13 @@ void render_identicon(CGContextRef ctx, int32_t code, unsigned int size, CGColor
     
 }
 #define IDENTICON_SIZE (96)
-#if !(TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
-@implementation TUIImage (CGIdenticon)
-+ (TUIImage *)identiconImageWithUserName:(NSString *)userName {
-    const char *cStr = [userName UTF8String];
-    unsigned char result[CC_SHA1_DIGEST_LENGTH];
-    CC_SHA1( cStr, (CC_LONG)strlen(cStr), result );
-    uint32_t code = ((result[0] & 0xFF) << 24) | ((result[1] & 0xFF) << 16)
-    | ((result[2] & 0xFF) << 8) | (result[3] & 0xFF);
-    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-    CGContextRef ctx = CGBitmapContextCreate(NULL, IDENTICON_SIZE, IDENTICON_SIZE, 8, 4*96, colorSpace, kCGImageAlphaPremultipliedLast);
-    CGContextSetFillColorSpace(ctx, colorSpace);
-    CGContextClipToRoundRect(ctx, CGRectMake(0, 0, 96, 96), 12);
-    render_identicon(ctx, code, IDENTICON_SIZE, colorSpace);
-    gloss_effect(ctx, IDENTICON_SIZE,colorSpace);
-    CGImageRef imageRef = CGBitmapContextCreateImage(ctx);
-    TUIImage *ret = [TUIImage imageWithCGImage:imageRef];
-    CGContextRelease(ctx);
-    CGColorSpaceRelease(colorSpace);
-    return ret;
-}
-@end
-#else
-void CGContextAddRoundRect(CGContextRef context, CGRect rect, CGFloat radius)
-{
-	radius = MIN(radius, rect.size.width / 2);
-	radius = MIN(radius, rect.size.height / 2);
-	radius = floor(radius);
-	
-	CGContextMoveToPoint(context, rect.origin.x, rect.origin.y + radius);
-	CGContextAddLineToPoint(context, rect.origin.x, rect.origin.y + rect.size.height - radius);
-	CGContextAddArc(context, rect.origin.x + radius, rect.origin.y + rect.size.height - radius, radius, M_PI, M_PI / 2, 1);
-	CGContextAddLineToPoint(context, rect.origin.x + rect.size.width - radius, rect.origin.y + rect.size.height);
-	CGContextAddArc(context, rect.origin.x + rect.size.width - radius, rect.origin.y + rect.size.height - radius, radius, M_PI / 2, 0.0f, 1);
-	CGContextAddLineToPoint(context, rect.origin.x + rect.size.width, rect.origin.y + radius);
-	CGContextAddArc(context, rect.origin.x + rect.size.width - radius, rect.origin.y + radius, radius, 0.0f, -M_PI / 2, 1);
-	CGContextAddLineToPoint(context, rect.origin.x + radius, rect.origin.y);
-	CGContextAddArc(context, rect.origin.x + radius, rect.origin.y + radius, radius, -M_PI / 2, M_PI, 1);
-}
-void CGContextClipToRoundCornerRect(CGContextRef context, CGRect rect, CGFloat radius) {
-    CGContextBeginPath(context);
-    CGContextSaveGState(context);
-    CGContextBeginPath(context);
-    CGContextAddRoundRect(context, rect, radius);
-    CGContextClosePath(context);
-//    CGContextClip(context);
-    CGContextRestoreGState(context);
-    CGContextClosePath(context);
-    CGContextClip(context);
-}
+
 @implementation UIImage (CGIdenticon)
 + (UIImage *)identiconImageWithUserName:(NSString *)userName {
+    if (!userName || [userName length] == 0) {
+        // generate a unique username
+        userName = [[NSUUID UUID] UUIDString];
+    }
     const char *cStr = [userName UTF8String];
     unsigned char result[CC_SHA1_DIGEST_LENGTH];
     CC_SHA1( cStr, (CC_LONG)strlen(cStr), result );
@@ -194,11 +119,9 @@ void CGContextClipToRoundCornerRect(CGContextRef context, CGRect rect, CGFloat r
     CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
     float scale = [[UIScreen mainScreen] scale];
     CGFloat size = IDENTICON_SIZE*scale;
-    CGContextRef ctx = CGBitmapContextCreate(NULL, size, size, 8, 4*size, colorSpace, kCGImageAlphaPremultipliedLast);
-    CGContextClipToRoundCornerRect(ctx, CGRectMake(0, 0, size, size), 6.*scale);
+    CGContextRef ctx = CGBitmapContextCreate(NULL, size, size, 8, 4*size, colorSpace, (kCGBitmapAlphaInfoMask & kCGImageAlphaPremultipliedLast));
     CGContextSetFillColorSpace(ctx, colorSpace);
     render_identicon(ctx, code, size, colorSpace);
-    gloss_effect(ctx, size, colorSpace);
     CGImageRef imageRef = CGBitmapContextCreateImage(ctx);
     
     UIImage *ret = [UIImage imageWithCGImage:imageRef scale:scale orientation:UIImageOrientationUp];
@@ -209,5 +132,3 @@ void CGContextClipToRoundCornerRect(CGContextRef context, CGRect rect, CGFloat r
 }
 
 @end
-
-#endif
